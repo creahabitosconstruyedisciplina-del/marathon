@@ -1,0 +1,580 @@
+import { useState, useEffect, useRef } from "react";
+
+const STORAGE_KEY = "sandra_marathon_data";
+const SHOPPING_KEY = "sandra_shopping_list";
+
+const DAYS_ES = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+
+const INITIAL_WEEKS = [
+  { id:"w1", period:"27 abr – 3 may", mesociclo:1, microciclo:1, uploadedAt:"2026-04-15", days:[
+    {day:"Lunes",session:"Movilidad + 40' Spinning zona 1 cadencia +85rpm + estirar"},
+    {day:"Martes",session:"Movilidad + 45' Trote muy cómodo <70%FC + Estirar"},
+    {day:"Miércoles",session:"Movilidad + Fuerza estabilizadores y CORE / Pilates + 30' elíptica + estirar"},
+    {day:"Jueves",session:"Movilidad + 60' Trote cómodo <75%FC"},
+    {day:"Viernes",session:"15' TS + 2x8'(5'15) Rec.1'30 + 8x2'(5'00-4'50) Rec.1'00 + 10' TS"},
+    {day:"Sábado",session:"Descanso"},
+    {day:"Domingo",session:"Movilidad + 60' Trote cómodo <75%FC + estirar"}
+  ]},
+  { id:"w2", period:"4 – 10 may", mesociclo:1, microciclo:2, uploadedAt:"2026-04-15", days:[
+    {day:"Lunes",session:"Movilidad + Fuerza-potencia + 40' Spinning zona 2 cadencia +90rpm + estirar"},
+    {day:"Martes",session:"15' TS + 2x3x1000m (1er bloque 5'00-4'55 / 2o bloque 4'45-4'42 Rec.1'30) + 10' TS"},
+    {day:"Miércoles",session:"Movilidad + 50' Spinning zona 1-2 cadencia +85rpm + estirar"},
+    {day:"Jueves",session:"15' TS + 3x[1'30–1'00–45''] ritmos 5'00–4'45–4'35 Rec.1'15 + 15' TS"},
+    {day:"Viernes",session:"Descanso"},
+    {day:"Sábado",session:"Movilidad + Estabilizadores/CORE + 30' Trote + 6 rectas 100m + estirar"},
+    {day:"Domingo",session:"Carrera 10km"}
+  ]},
+  { id:"w3", period:"11 – 17 may", mesociclo:1, microciclo:3, uploadedAt:"2026-04-29", days:[
+    {day:"Lunes",session:"Descanso o 45' Spinning zona 1 cadencia +90rpm (regenerativo)"},
+    {day:"Martes",session:"50' Trote muy cómodo <70%FC + estirar"},
+    {day:"Miércoles",session:"Movilidad + Fuerza-potencia + 40' Spinning zona 2 cadencia +90rpm + estirar"},
+    {day:"Jueves",session:"15' TS + 30' (5'20-5'10) + 10' TS"},
+    {day:"Viernes",session:"Movilidad + Fuerza estabilizadores/CORE / Pilates + 30' Spinning + estirar"},
+    {day:"Sábado",session:"Descanso"},
+    {day:"Domingo",session:"60' Trote cómodo <80%FC + estirar"}
+  ]},
+  { id:"w4", period:"18 – 24 may", mesociclo:1, microciclo:4, uploadedAt:"2026-04-29", days:[
+    {day:"Lunes",session:"Movilidad + Estabilizadores/CORE + 45' Spinning suave + estirar"},
+    {day:"Martes",session:"15' TS + 6x[400-200] + 2'TS + 1000 + 10' TS (ritmos 4'50–4'45 / sub5'00)"},
+    {day:"Miércoles",session:"50' Spinning cómodo zona 1-2 cadencia alta"},
+    {day:"Jueves",session:"Movilidad + Fuerza-potencia + 30' Trote progresivo + 5' TS + estirar"},
+    {day:"Viernes",session:"Descanso"},
+    {day:"Sábado",session:"15' TS + 3000 + 3x1000 + 10' TS (ritmos 5'00-4'55 / 4'45-4'48)"},
+    {day:"Domingo",session:"60' Trote muy cómodo <70%FC + estirar"}
+  ]},
+  { id:"w5", period:"25 – 31 may", mesociclo:2, microciclo:1, uploadedAt:"2026-05-13", days:[
+    {day:"Lunes",session:"Movilidad + Fuerza-potencia + 40' Spinning suave + estirar"},
+    {day:"Martes",session:"Descanso o 45' Trote muy cómodo <70%FC + estirar"},
+    {day:"Miércoles",session:"15' TS + 4x1000 (4'52-4'48) + 2x500 (2'20-2'18) + 4x200 (sub52'') + 15' TS"},
+    {day:"Jueves",session:"Descanso"},
+    {day:"Viernes",session:"Movilidad + Estabilizadores/CORE + 45' Spinning suave"},
+    {day:"Sábado",session:"Movilidad + 30' Trote <70%FC + 6x20'' cadencias altas + estirar"},
+    {day:"Domingo",session:"Carrera 10km"}
+  ]}
+];
+
+const SHOPPING_BASE = {
+  "🥦 Frutas y verduras":[
+    {name:"Plátanos",qty:"8–10 ud"},{name:"Fresas o fruta del tiempo",qty:"500g"},
+    {name:"Aguacates",qty:"3 ud"},{name:"Espinacas baby",qty:"300g"},
+    {name:"Zanahoria",qty:"500g"},{name:"Calabacín",qty:"2 ud"},
+    {name:"Brócoli",qty:"1 ud"},{name:"Calabaza",qty:"400g"},
+    {name:"Tomate",qty:"500g"},{name:"Pepino",qty:"2 ud"},
+    {name:"Limones",qty:"4 ud"},{name:"Patatas",qty:"1 kg"},
+  ],
+  "🥚 Proteínas vegetales":[
+    {name:"Tofu firme",qty:"400g"},{name:"Tempeh",qty:"200g"},
+    {name:"Edamame congelado",qty:"300g"},{name:"Lentejas rojas",qty:"500g"},
+    {name:"Garbanzos",qty:"400g"},{name:"Alubias negras",qty:"400g"},
+    {name:"Huevos (Sandra)",qty:"12 ud"},
+  ],
+  "🌾 Cereales sin gluten":[
+    {name:"Copos de avena sin gluten",qty:"500g"},{name:"Arroz integral",qty:"1 kg"},
+    {name:"Quinoa",qty:"500g"},{name:"Pan de arroz o maíz",qty:"1 paquete"},
+    {name:"Tortitas de maíz/arroz",qty:"1 paquete"},{name:"Granola sin gluten",qty:"300g"},
+  ],
+  "🥛 Bebidas vegetales":[
+    {name:"Bebida de avena",qty:"2 litros"},{name:"Yogur de coco o avena",qty:"4 ud"},
+  ],
+  "🥜 Frutos secos y semillas":[
+    {name:"Nueces",qty:"200g"},{name:"Almendras",qty:"150g"},
+    {name:"Mantequilla de almendras",qty:"1 bote"},{name:"Semillas de cáñamo",qty:"150g"},
+    {name:"Dátiles",qty:"200g"},
+  ],
+  "🫙 Despensa":[
+    {name:"Aceite de oliva virgen extra",qty:"1 botella"},{name:"Cúrcuma en polvo",qty:"1 bote"},
+    {name:"Miel",qty:"1 bote"},{name:"Sésamo tostado",qty:"100g"},
+  ],
+  "💊 Suplementos":[
+    {name:"Prozis Energy IsoCarb",qty:"según stock"},{name:"Prozis Ultra Recovery",qty:"según stock"},
+    {name:"Inositol powder",qty:"según stock"},{name:"NAC + L-Cisteína",qty:"según stock"},
+  ],
+  "🧑‍🍳 Para él":[
+    {name:"Salmón fresco o congelado",qty:"400g"},
+    {name:"Pechuga de pollo",qty:"400g"},
+    {name:"Huevos (él)",qty:"6 ud"},
+  ],
+};
+
+const RUTINA_A = {
+  nombre:"Estabilizadores + CORE", tipo:"A", color:"#60a5fa", duracion:"45–50 min",
+  bloques:[
+    { titulo:"Activación core (10 min)", ejercicios:[
+      {nombre:"Dead bug", series:"3×10", mat:"Suelo", desc:"Espalda pegada al suelo, extensión alterna brazo-pierna. Activa core sin cargar psoas."},
+      {nombre:"Bird dog", series:"3×10", mat:"Suelo / bloque pilates", desc:"Cuadrupedia, extensión alterna. Usa el bloque bajo la rodilla si necesitas apoyo."},
+      {nombre:"Plancha frontal", series:"3×35–45 seg", mat:"Suelo", desc:"Codos o manos. Sin arquear la lumbar. Respiración controlada."},
+    ]},
+    { titulo:"Glúteo y cadera", ejercicios:[
+      {nombre:"Glute bridge", series:"4×15", mat:"Suelo + banda rodillas opcional", desc:"Pies apoyados, elevación de cadera. Sin hiperextensión lumbar. Pon la banda por encima de rodillas."},
+      {nombre:"Clamshell", series:"3×15 cada lado", mat:"Goma naranja Decathlon", desc:"Tumbada de lado, rodillas dobladas, goma sobre rodillas. Apertura lenta. Glúteo medio."},
+      {nombre:"Abducción lateral tumbada", series:"3×12 cada lado", mat:"Peso 1kg tobillo", desc:"Decúbito lateral, eleva la pierna con peso. Movimiento lento. Glúteo medio."},
+      {nombre:"Plancha lateral (rodillas)", series:"3×25–30 seg cada lado", mat:"Suelo / bloque pilates", desc:"Desde rodillas. Cuadrado lumbar y glúteo medio. Progresa a plancha completa."},
+    ]},
+    { titulo:"Tren superior", ejercicios:[
+      {nombre:"Press hombros con mancuernas", series:"3×12", mat:"Mancuernas + banco", desc:"Sentada en el banco. Deltoides y tríceps. Sin compensar con la lumbar."},
+      {nombre:"Remo con goma naranja", series:"3×15", mat:"Goma naranja anclada al pie", desc:"Tirón hacia el cuerpo, codos pegados. Dorsal y romboides — clave para la postura en carrera."},
+      {nombre:"Flexiones inclinadas en banco", series:"3×12–15", mat:"Banco", desc:"Manos en el banco. Pecho y tríceps. Baja la inclinación progresivamente."},
+      {nombre:"Curl de bíceps", series:"3×12", mat:"Mancuernas", desc:"De pie o sentada. Movimiento controlado en la bajada."},
+    ]},
+  ]
+};
+
+const RUTINA_B = {
+  nombre:"Fuerza-potencia", tipo:"B", color:"#f97316", duracion:"55–60 min",
+  bloques:[
+    { titulo:"Calentamiento (8 min)", ejercicios:[
+      {nombre:"Círculos de cadera cuadrupedia", series:"2×10 cada lado", mat:"Suelo", desc:"Movimiento articular suave. Prepara la cadera sin forzar la inserción."},
+      {nombre:"Hip hinge con goma naranja", series:"2×10", mat:"Goma naranja", desc:"Bisagra de cadera con resistencia ligera. Activa isquiotibiales antes de cargar."},
+    ]},
+    { titulo:"Bloque de fuerza", ejercicios:[
+      {nombre:"Sentadilla goblet (rango parcial)", series:"4×10", mat:"Mancuerna más pesada", desc:"Mancuerna al pecho, bajada hasta 90° MÁXIMO. Sin profundidad. Cuádriceps y glúteo."},
+      {nombre:"Romanian deadlift", series:"4×10", mat:"Mancuernas", desc:"Bisagra de cadera, espalda neutra. Baja hasta mitad de tibia — sin llegar al tope."},
+      {nombre:"Step-up lateral al banco", series:"3×10 cada lado", mat:"Banco + peso 1kg tobillo opcional", desc:"Subida LATERAL — no frontal. Glúteo medio y estabilidad de rodilla."},
+      {nombre:"Monster walk lateral", series:"3×12 pasos cada lado", mat:"Goma naranja sobre rodillas", desc:"Pasos laterales con resistencia. Glúteo medio. Específico para estabilidad en carrera."},
+    ]},
+    { titulo:"Tren superior + Core", ejercicios:[
+      {nombre:"Remo unilateral con mancuerna", series:"3×12 cada lado", mat:"Mancuerna + banco", desc:"Apoyada en el banco. Dorsal y bíceps. Compensa el trabajo de brazos corriendo."},
+      {nombre:"Press de banca con mancuernas", series:"3×12", mat:"Mancuernas + banco", desc:"Tumbada. Codos a 45°, no a 90°. Pecho y tríceps."},
+      {nombre:"Pallof press", series:"3×12 cada lado", mat:"Goma naranja anclada a altura pecho", desc:"Core antirotacional. Ancla la goma a algo fijo. Muy específico para corredoras."},
+      {nombre:"Press de hombros alto volumen", series:"3×15", mat:"Pesos 1kg en manos", desc:"De pie. Con los pesos de 1kg. Hombro y resistencia muscular."},
+    ]},
+  ]
+};
+
+function classifyIntensity(s) {
+  const t = s.toLowerCase();
+  if (t.includes("descanso")) return "rest";
+  if (t.includes("fuerza") || t.includes("core") || t.includes("pilates") || t.includes("potencia") || t.includes("estabilizadores")) return "strength";
+  if (t.includes("4'4")||t.includes("4'5")||t.includes("1000")||t.includes("500m")||t.includes("4x")||t.includes("3x")||t.includes("6x")||t.includes("8x")||t.includes("2x8")||t.includes("series")) return "quality";
+  if (t.includes("spinning")||t.includes("elíptica")) return "cross";
+  if (t.includes("<70")||t.includes("muy cómodo")||t.includes("regenerativ")) return "easy";
+  if (t.includes("<75")||t.includes("<80")||t.includes("cómodo")) return "moderate";
+  if (t.includes("movilidad")) return "mobility";
+  return "easy";
+}
+
+const IC = {
+  rest:     {dot:"#94a3b8", label:"Descanso",   emoji:"😴"},
+  mobility: {dot:"#38bdf8", label:"Movilidad",  emoji:"🧘"},
+  strength: {dot:"#8b5cf6", label:"Fuerza",     emoji:"💪"},
+  easy:     {dot:"#34d399", label:"Suave",      emoji:"🟢"},
+  moderate: {dot:"#14b8a6", label:"Rodaje",     emoji:"🏃"},
+  quality:  {dot:"#f97316", label:"Calidad",    emoji:"🔥"},
+  cross:    {dot:"#60a5fa", label:"Cross",      emoji:"🚴"},
+};
+
+function estimateKcal(s) {
+  return {rest:0,mobility:150,strength:300,easy:500,moderate:650,quality:800,cross:450}[classifyIntensity(s)]||0;
+}
+
+function getMenu(type, session) {
+  const intense = session.toLowerCase().includes("1000")||session.toLowerCase().includes("4x")||session.toLowerCase().includes("6x")||session.toLowerCase().includes("8x");
+  if (type==="rest") return [
+    {k:"☀️ Desayuno", v:"Yogur de coco + granola sin gluten + fruta · café con avena"},
+    {k:"🍽 Almuerzo", v:"Ensalada: espinacas + pepino + tomate + huevo + aguacate + semillas"},
+    {k:"🍎 Merienda", v:"Fruta + mantequilla de almendras + tortitas de maíz"},
+    {k:"🌙 Cena", v:"Alubias negras con calabaza, espinacas y comino · pan de arroz"},
+    {k:"👨 Él", v:"Salmón o pollo con calabaza y espinacas", el:true},
+    {k:"💧 Hidratación", v:"2,0–2,5 L agua"},
+  ];
+  if (type==="quality"||intense) return [
+    {k:"☀️ Desayuno", v:"Porridge avena (80g) + bebida de avena + plátano + miel + nueces"},
+    {k:"⚡ Pre-entreno", v:"30' antes: plátano + 3–4 dátiles · IsoCarb en botella"},
+    {k:"🏃 Durante", v:"IsoCarb cada 45' si sesión >60'"},
+    {k:"🔄 Post (<20')", v:"Ultra Recovery con bebida de avena"},
+    {k:"🍽 Almuerzo", v:"Arroz integral (90g) + tofu salteado + zanahoria y calabacín · fruta"},
+    {k:"🍎 Merienda", v:"Yogur de coco + fresas + granola sin gluten"},
+    {k:"🌙 Cena", v:"Lentejas rojas con espinacas, zanahoria y cúrcuma · pan de arroz"},
+    {k:"👨 Él", v:"Salmón al horno o huevos con espinacas y patata", el:true},
+    {k:"💧 Hidratación", v:"3,0–3,5 L + isotónico en el entreno"},
+  ];
+  if (type==="strength") return [
+    {k:"☀️ Desayuno", v:"Tortilla 3 huevos + tomate + rúcula · pan de arroz con aceite"},
+    {k:"🍽 Almuerzo", v:"Edamame (150g) + arroz integral + zanahoria y pepino · vinagreta limón"},
+    {k:"🍎 Merienda", v:"Batido: bebida de avena + plátano + proteína vegetal 20g"},
+    {k:"🌙 Cena", v:"Crema de brócoli · tempeh (120g) a la plancha + patata + judías verdes"},
+    {k:"💧 Hidratación", v:"2,0–2,5 L agua"},
+  ];
+  if (type==="moderate") return [
+    {k:"☀️ Desayuno", v:"Tostadas pan de arroz + aguacate + 2 huevos poché · café con avena"},
+    {k:"🍽 Almuerzo", v:"Quinoa (80g) + garbanzos + espinacas + zanahoria · fruta"},
+    {k:"👨 Él", v:"Quinoa con huevo duro, zanahoria y aguacate", el:true},
+    {k:"🍎 Merienda", v:"Yogur de coco + nueces + fruta"},
+    {k:"🌙 Cena", v:"Crema de calabaza · tortilla 3 huevos con espinacas · pan de maíz"},
+    {k:"💧 Hidratación", v:"2,5–3,0 L agua"},
+  ];
+  if (type==="easy") return [
+    {k:"☀️ Desayuno", v:"Tostadas pan de arroz + aguacate + 2 huevos poché · café con avena"},
+    {k:"🍽 Almuerzo", v:"Quinoa (80g) + garbanzos + espinacas + zanahoria · fruta"},
+    {k:"👨 Él", v:"Quinoa con huevo duro, zanahoria y aguacate", el:true},
+    {k:"🍎 Merienda", v:"Fruta + 25g frutos secos"},
+    {k:"🌙 Cena", v:"Crema de calabaza · tortilla 2 huevos con espinacas · pan de maíz"},
+    {k:"💧 Hidratación", v:"2,5 L agua"},
+  ];
+  if (type==="cross") return [
+    {k:"☀️ Desayuno", v:"Porridge avena (70g) + bebida de avena + fruta + semillas de chía"},
+    {k:"🍽 Almuerzo", v:"Arroz integral + tofu + brócoli al vapor · fruta"},
+    {k:"🍎 Merienda", v:"Tortita de maíz + mantequilla de almendras + plátano"},
+    {k:"🌙 Cena", v:"Wok de calabacín, zanahoria y brócoli con tofu y arroz"},
+    {k:"💧 Hidratación", v:"2,5 L agua"},
+  ];
+  return [{k:"☀️ Desayuno", v:"Yogur de avena + fruta"},{k:"💡 Nota", v:"Día de movilidad: comida ligera y antiinflamatoria"}];
+}
+
+function getRoutine(session) {
+  return session.toLowerCase().includes("potencia") ? RUTINA_B : RUTINA_A;
+}
+
+const today = new Date();
+const DAYS_ORDER = ["Lunes","Martes","Miércoles","Jueves","Viernes","Sábado","Domingo"];
+
+export default function App() {
+  const [data, setData] = useState(null);
+  const [shopping, setShopping] = useState(null);
+  const [checked, setChecked] = useState({});
+  const [tab, setTab] = useState("today");
+  const [selWeek, setSelWeek] = useState(null);
+  const [selDay, setSelDay] = useState(null);
+  const [newItem, setNewItem] = useState("");
+  const [newCat, setNewCat] = useState("🥦 Frutas y verduras");
+  const [uploading, setUploading] = useState(false);
+  const [uploadText, setUploadText] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
+  const [notif, setNotif] = useState(null);
+  const [expandedEx, setExpandedEx] = useState(null);
+  const fileRef = useRef();
+
+  useEffect(() => {
+    (async () => {
+      try {
+        const s = await window.storage.get(STORAGE_KEY);
+        setData(s ? JSON.parse(s.value) : { weeks: INITIAL_WEEKS });
+        const sh = await window.storage.get(SHOPPING_KEY);
+        if (sh) { const p = JSON.parse(sh.value); setShopping(p.list); setChecked(p.checked||{}); }
+        else setShopping(SHOPPING_BASE);
+      } catch { setData({ weeks: INITIAL_WEEKS }); setShopping(SHOPPING_BASE); }
+    })();
+  }, []);
+
+  const showNotif = (msg, err) => { setNotif({msg,err}); setTimeout(()=>setNotif(null),3000); };
+  const saveShop = async (l,c) => { try { await window.storage.set(SHOPPING_KEY, JSON.stringify({list:l,checked:c})); } catch {} };
+
+  const toggleCheck = (cat,i) => {
+    const k=`${cat}_${i}`, u={...checked,[k]:!checked[k]};
+    setChecked(u); saveShop(shopping,u);
+  };
+  const addItem = () => {
+    if (!newItem.trim()) return;
+    const u={...shopping,[newCat]:[...(shopping[newCat]||[]),{name:newItem.trim(),qty:"",manual:true}]};
+    setShopping(u); saveShop(u,checked); setNewItem(""); showNotif("Añadido ✓");
+  };
+  const removeItem = (cat,i) => {
+    const u={...shopping,[cat]:shopping[cat].filter((_,j)=>j!==i)};
+    const c={...checked}; delete c[`${cat}_${i}`];
+    setShopping(u); setChecked(c); saveShop(u,c);
+  };
+
+  const handleUpload = e => {
+    const f=e.target.files[0]; if(!f) return;
+    setUploading(true);
+    const r=new FileReader();
+    r.onload=ev=>{setUploadText(ev.target.result||"");setUploading(false);showNotif("Archivo listo ✓");};
+    r.readAsText(f);
+  };
+
+  const processUpload = async () => {
+    if (!uploadText) return;
+    setAiLoading(true);
+    try {
+      const res = await fetch("https://api.anthropic.com/v1/messages",{
+        method:"POST", headers:{"Content-Type":"application/json"},
+        body:JSON.stringify({model:"claude-sonnet-4-20250514",max_tokens:1000,messages:[{role:"user",content:`Analiza este plan de entrenamiento y devuelve SOLO JSON sin markdown:
+{"weeks":[{"id":"w_new_1","period":"X – Y","mesociclo":1,"microciclo":1,"uploadedAt":"${new Date().toISOString().split('T')[0]}","days":[{"day":"Lunes","session":"..."},{"day":"Martes","session":"..."},{"day":"Miércoles","session":"..."},{"day":"Jueves","session":"..."},{"day":"Viernes","session":"..."},{"day":"Sábado","session":"..."},{"day":"Domingo","session":"..."}]}]}
+Plan: ${uploadText.slice(0,3000)}`}]})
+      });
+      const j=await res.json();
+      const txt=j.content?.map(c=>c.text||"").join("")||"";
+      const parsed=JSON.parse(txt.replace(/```json|```/g,"").trim());
+      const newWeeks=[...(data?.weeks||[]),...parsed.weeks];
+      const nd={weeks:newWeeks};
+      setData(nd);
+      await window.storage.set(STORAGE_KEY,JSON.stringify(nd));
+      setUploadText(""); setTab("plan");
+      showNotif(`✅ ${parsed.weeks.length} semanas añadidas`);
+    } catch { showNotif("Error al procesar","err"); }
+    setAiLoading(false);
+  };
+
+  const todayDow = today.getDay(); // 0=Sun
+  const todayDayName = DAYS_ORDER[todayDow===0?6:todayDow-1];
+  const lastWeek = data?.weeks?.[data.weeks.length-1];
+  const todayEntry = lastWeek?.days.find(d=>d.day===todayDayName);
+  const todayType = todayEntry ? classifyIntensity(todayEntry.session) : "rest";
+  const todayMenu = todayEntry ? getMenu(todayType, todayEntry.session) : [];
+  const todayRoutine = todayType==="strength" ? getRoutine(todayEntry?.session||"") : null;
+
+  const totalItems = shopping ? Object.values(shopping).flat().length : 0;
+  const checkedCount = Object.values(checked).filter(Boolean).length;
+
+  const C = {
+    bg:"#0f1117", surface:"#161824", surface2:"#1a1d2e", border:"#2a2a3a",
+    accent:"#e2631e", text:"#f0ede8", muted:"#9ca3af", dim:"#6b7280",
+  };
+  const p = (v) => `${v}px`;
+
+  if (!data||!shopping) return <div style={{background:C.bg,minHeight:"100vh",display:"flex",alignItems:"center",justifyContent:"center",color:C.accent,fontSize:18,fontFamily:"Georgia,serif"}}>Cargando…</div>;
+
+  const TABS = [
+    {id:"today",  icon:"📅", label:"Hoy"},
+    {id:"plan",   icon:"🗓", label:"Plan"},
+    {id:"shopping",icon:"🛒",label:`Compra${checkedCount>0?` ${checkedCount}`:"" }`},
+    {id:"upload", icon:"📤", label:"Subir"},
+  ];
+
+  return (
+    <div style={{background:C.bg,minHeight:"100vh",color:C.text,fontFamily:"Georgia,serif",paddingBottom:80,maxWidth:480,margin:"0 auto",position:"relative"}}>
+
+      {/* Notification */}
+      {notif && <div style={{position:"fixed",top:16,left:"50%",transform:"translateX(-50%)",zIndex:999,background:notif.err?"#7f1d1d":"#14532d",color:"white",padding:"10px 20px",borderRadius:20,fontSize:14,boxShadow:"0 4px 20px rgba(0,0,0,0.5)",whiteSpace:"nowrap"}}>{notif.msg}</div>}
+
+      {/* Header */}
+      <div style={{padding:"16px 16px 12px",background:"#0d0f1a",borderBottom:`1px solid ${C.border}`,display:"flex",alignItems:"center",justifyContent:"space-between"}}>
+        <div>
+          <div style={{fontSize:10,letterSpacing:3,color:C.accent,textTransform:"uppercase",marginBottom:2}}>Maratón San Sebastián · Nov 2026</div>
+          <div style={{fontSize:20,fontWeight:"bold",letterSpacing:-0.5}}>Sandra</div>
+        </div>
+        <div style={{textAlign:"right",fontSize:11,color:C.dim}}>
+          <div>{data.weeks.length} semanas</div>
+          <div>Meso {lastWeek?.mesociclo}</div>
+        </div>
+      </div>
+
+      {/* TODAY TAB */}
+      {tab==="today" && (
+        <div style={{padding:16}}>
+          <div style={{fontSize:11,color:C.dim,textTransform:"uppercase",letterSpacing:2,marginBottom:12}}>
+            {todayDayName} · {today.toLocaleDateString("es-ES",{day:"numeric",month:"long"})}
+          </div>
+
+          {/* Session card */}
+          <div style={{background:C.surface,borderRadius:14,padding:16,marginBottom:12,borderLeft:`4px solid ${IC[todayType].dot}`}}>
+            <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:8}}>
+              <span style={{fontSize:22}}>{IC[todayType].emoji}</span>
+              <span style={{fontSize:12,color:IC[todayType].dot,background:`${IC[todayType].dot}22`,padding:"4px 12px",borderRadius:20}}>{IC[todayType].label}</span>
+            </div>
+            <div style={{fontSize:14,lineHeight:1.6,color:C.text}}>{todayEntry?.session||"Sin entreno hoy"}</div>
+            <div style={{marginTop:8,fontSize:12,color:C.dim}}>~{estimateKcal(todayEntry?.session||"")} kcal</div>
+          </div>
+
+          {/* Menu */}
+          <div style={{fontSize:11,color:C.accent,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Menú del día</div>
+          {todayMenu.map((item,i)=>(
+            <div key={i} style={{background:item.el?"#1a1400":C.surface,borderRadius:10,padding:"12px 14px",marginBottom:6,borderLeft:item.el?"3px solid #854f0b":"none"}}>
+              <div style={{fontSize:11,color:item.el?"#f59e0b":C.muted,marginBottom:4}}>{item.k}</div>
+              <div style={{fontSize:14,lineHeight:1.5}}>{item.v}</div>
+            </div>
+          ))}
+
+          {/* Routine if strength */}
+          {todayRoutine && (
+            <div style={{marginTop:16}}>
+              <div style={{fontSize:11,color:todayRoutine.color,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>
+                Rutina {todayRoutine.tipo} · {todayRoutine.nombre}
+              </div>
+              <div style={{background:"#0d0f1a",borderRadius:8,padding:"10px 14px",marginBottom:10,borderLeft:`3px solid ${todayRoutine.color}`,fontSize:12,color:"#f59e0b"}}>
+                ⚠️ Lesión previa psoas-glúteo: rango controlado · sin zancada larga · sentadilla máx. 90°
+              </div>
+              {todayRoutine.bloques.map((bloque,bi)=>(
+                <div key={bi} style={{marginBottom:12}}>
+                  <div style={{fontSize:10,color:todayRoutine.color,textTransform:"uppercase",letterSpacing:2,marginBottom:6,paddingLeft:4}}>{bloque.titulo}</div>
+                  {bloque.ejercicios.map((ej,ei)=>{
+                    const exKey=`${bi}_${ei}`;
+                    const open=expandedEx===exKey;
+                    return (
+                      <div key={ei} onClick={()=>setExpandedEx(open?null:exKey)} style={{background:C.surface,borderRadius:10,padding:"12px 14px",marginBottom:6,cursor:"pointer",transition:"all .2s"}}>
+                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                          <div style={{fontSize:14,fontWeight:"bold"}}>{ej.nombre}</div>
+                          <div style={{display:"flex",alignItems:"center",gap:8}}>
+                            <span style={{fontSize:12,color:C.muted,background:C.surface2,padding:"3px 8px",borderRadius:8}}>{ej.series}</span>
+                            <span style={{color:C.dim,fontSize:16}}>{open?"▲":"▼"}</span>
+                          </div>
+                        </div>
+                        {open && (
+                          <div style={{marginTop:10,paddingTop:10,borderTop:`1px solid ${C.border}`}}>
+                            <div style={{fontSize:13,color:C.muted,lineHeight:1.6,marginBottom:8}}>{ej.desc}</div>
+                            <div style={{fontSize:11,color:todayRoutine.color}}>🔧 {ej.mat}</div>
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* PLAN TAB */}
+      {tab==="plan" && (
+        <div style={{padding:16}}>
+          <div style={{fontSize:18,fontWeight:"normal",color:"#d1cdc7",marginBottom:16}}>Plan de entrenamiento</div>
+          {[...data.weeks].reverse().map(week=>(
+            <div key={week.id} style={{background:C.surface,borderRadius:14,marginBottom:12,overflow:"hidden",border:`1px solid ${C.border}`}}>
+              <div style={{padding:"12px 16px",background:"#1a1d2e",borderBottom:`1px solid ${C.border}`,display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                <div>
+                  <span style={{fontSize:11,color:C.accent,marginRight:8}}>M{week.mesociclo}·{week.microciclo}</span>
+                  <span style={{fontSize:14,fontWeight:"bold"}}>{week.period}</span>
+                </div>
+              </div>
+              {week.days.map(d=>{
+                const type=classifyIntensity(d.session);
+                const ic=IC[type];
+                const isOpen=selWeek===week.id&&selDay?.day===d.day;
+                return (
+                  <div key={d.day}>
+                    <div onClick={()=>{setSelWeek(week.id);setSelDay(isOpen?null:d);setExpandedEx(null);}} style={{display:"flex",alignItems:"center",gap:12,padding:"13px 16px",borderBottom:`1px solid ${C.border}`,background:isOpen?"#1e2540":"transparent",cursor:"pointer"}}>
+                      <div style={{width:10,height:10,borderRadius:"50%",background:ic.dot,flexShrink:0}} />
+                      <div style={{width:70,fontSize:13,color:C.dim,flexShrink:0}}>{d.day}</div>
+                      <div style={{flex:1,fontSize:13,lineHeight:1.4,color:isOpen?C.text:C.muted}}>{d.session}</div>
+                      <span style={{fontSize:16,color:C.dim}}>{isOpen?"▲":"▼"}</span>
+                    </div>
+                    {isOpen && (
+                      <div style={{padding:"14px 16px",background:"#1a1d2e",borderBottom:`1px solid ${C.border}`}}>
+                        <div style={{fontSize:11,color:C.accent,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Menú · {d.day}</div>
+                        {getMenu(type,d.session).map((item,i)=>(
+                          <div key={i} style={{background:item.el?"#1a1400":C.surface2,borderRadius:8,padding:"10px 12px",marginBottom:6,borderLeft:item.el?"3px solid #854f0b":"none"}}>
+                            <div style={{fontSize:10,color:item.el?"#f59e0b":C.muted,marginBottom:3}}>{item.k}</div>
+                            <div style={{fontSize:13,lineHeight:1.5}}>{item.v}</div>
+                          </div>
+                        ))}
+                        {type==="strength" && (()=>{
+                          const r=getRoutine(d.session);
+                          return (
+                            <div style={{marginTop:14,paddingTop:12,borderTop:`1px solid ${C.border}`}}>
+                              <div style={{fontSize:11,color:r.color,letterSpacing:2,textTransform:"uppercase",marginBottom:8}}>Rutina {r.tipo} · {r.nombre} · {r.duracion}</div>
+                              {r.bloques.map((bl,bi)=>(
+                                <div key={bi} style={{marginBottom:10}}>
+                                  <div style={{fontSize:10,color:r.color,textTransform:"uppercase",letterSpacing:1,marginBottom:6}}>{bl.titulo}</div>
+                                  {bl.ejercicios.map((ej,ei)=>{
+                                    const k=`plan_${week.id}_${d.day}_${bi}_${ei}`;
+                                    const open=expandedEx===k;
+                                    return (
+                                      <div key={ei} onClick={e=>{e.stopPropagation();setExpandedEx(open?null:k);}} style={{background:C.bg,borderRadius:8,padding:"10px 12px",marginBottom:4,cursor:"pointer"}}>
+                                        <div style={{display:"flex",justifyContent:"space-between",alignItems:"center"}}>
+                                          <span style={{fontSize:13,fontWeight:"bold"}}>{ej.nombre}</span>
+                                          <span style={{fontSize:11,color:C.muted}}>{ej.series}</span>
+                                        </div>
+                                        {open && <div style={{marginTop:8,fontSize:12,color:C.muted,lineHeight:1.5}}>{ej.desc}<br/><span style={{color:r.color,fontSize:11}}>🔧 {ej.mat}</span></div>}
+                                      </div>
+                                    );
+                                  })}
+                                </div>
+                              ))}
+                            </div>
+                          );
+                        })()}
+                      </div>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* SHOPPING TAB */}
+      {tab==="shopping" && (
+        <div style={{padding:16}}>
+          <div style={{display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:6}}>
+            <div style={{fontSize:18,fontWeight:"normal",color:"#d1cdc7"}}>Lista de la compra</div>
+            <button onClick={()=>{setChecked({});saveShop(shopping,{});showNotif("Lista reiniciada");}} style={{padding:"8px 14px",background:"none",border:`1px solid ${C.border}`,borderRadius:20,color:C.dim,cursor:"pointer",fontSize:12,fontFamily:"Georgia,serif"}}>Reiniciar</button>
+          </div>
+          <div style={{fontSize:12,color:C.dim,marginBottom:16}}>{checkedCount}/{totalItems} marcados · toca para marcar</div>
+
+          {/* Progress */}
+          <div style={{height:4,background:C.border,borderRadius:2,marginBottom:16,overflow:"hidden"}}>
+            <div style={{height:"100%",width:`${Math.round(checkedCount/Math.max(totalItems,1)*100)}%`,background:C.accent,borderRadius:2,transition:"width .3s"}}/>
+          </div>
+
+          {/* Add item */}
+          <div style={{background:C.surface,borderRadius:12,padding:14,marginBottom:16}}>
+            <div style={{fontSize:11,color:C.accent,letterSpacing:2,textTransform:"uppercase",marginBottom:10}}>Añadir producto</div>
+            <input value={newItem} onChange={e=>setNewItem(e.target.value)} onKeyDown={e=>e.key==="Enter"&&addItem()} placeholder="Nombre del producto…" style={{width:"100%",boxSizing:"border-box",padding:"10px 14px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,fontSize:14,fontFamily:"Georgia,serif",marginBottom:8}} />
+            <div style={{display:"flex",gap:8}}>
+              <select value={newCat} onChange={e=>setNewCat(e.target.value)} style={{flex:1,padding:"10px 10px",background:C.bg,border:`1px solid ${C.border}`,borderRadius:8,color:C.text,fontSize:12,fontFamily:"Georgia,serif"}}>
+                {Object.keys(shopping).map(c=><option key={c} value={c}>{c}</option>)}
+              </select>
+              <button onClick={addItem} style={{padding:"10px 18px",background:C.accent,border:"none",borderRadius:8,color:"white",cursor:"pointer",fontSize:14,fontFamily:"Georgia,serif",fontWeight:"bold"}}>+</button>
+            </div>
+          </div>
+
+          {Object.entries(shopping).map(([cat,items])=>items.length===0?null:(
+            <div key={cat} style={{marginBottom:16}}>
+              <div style={{fontSize:11,color:C.accent,letterSpacing:2,textTransform:"uppercase",marginBottom:8,paddingLeft:4}}>{cat}</div>
+              <div style={{background:C.surface,borderRadius:12,overflow:"hidden"}}>
+                {items.map((item,idx)=>{
+                  const k=`${cat}_${idx}`;
+                  const isChecked=!!checked[k];
+                  return (
+                    <div key={idx} onClick={()=>toggleCheck(cat,idx)} style={{display:"flex",alignItems:"center",gap:12,padding:"14px 16px",borderBottom:idx<items.length-1?`1px solid ${C.border}`:"none",background:isChecked?"#0d120d":"transparent",cursor:"pointer"}}>
+                      <div style={{width:24,height:24,borderRadius:6,border:isChecked?"none":`1px solid ${C.border}`,background:isChecked?"#166534":"transparent",display:"flex",alignItems:"center",justifyContent:"center",flexShrink:0,fontSize:15}}>
+                        {isChecked&&"✓"}
+                      </div>
+                      <span style={{flex:1,fontSize:15,color:isChecked?C.dim:C.text,textDecoration:isChecked?"line-through":"none"}}>{item.name}</span>
+                      {item.qty&&<span style={{fontSize:12,color:C.dim}}>{item.qty}</span>}
+                      {item.manual&&<button onClick={e=>{e.stopPropagation();removeItem(cat,idx);}} style={{background:"none",border:"none",color:C.dim,cursor:"pointer",fontSize:18,padding:"0 4px"}}>×</button>}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          ))}
+          {checkedCount===totalItems&&totalItems>0&&<div style={{textAlign:"center",fontSize:16,color:"#34d399",padding:20}}>¡Lista completa! 🛒✓</div>}
+        </div>
+      )}
+
+      {/* UPLOAD TAB */}
+      {tab==="upload" && (
+        <div style={{padding:16}}>
+          <div style={{fontSize:18,fontWeight:"normal",color:"#d1cdc7",marginBottom:6}}>Nuevo plan del entrenador</div>
+          <div style={{fontSize:13,color:C.dim,marginBottom:20}}>Sube el .doc o .txt cada 15 días y la IA procesa el plan automáticamente.</div>
+
+          <div onClick={()=>fileRef.current?.click()} style={{border:`2px dashed ${C.border}`,borderRadius:14,padding:"36px 20px",textAlign:"center",cursor:"pointer",background:uploadText?C.surface:"transparent",marginBottom:12}}>
+            <input ref={fileRef} type="file" accept=".txt,.doc,.docx,.md" onChange={handleUpload} style={{display:"none"}}/>
+            <div style={{fontSize:40,marginBottom:10}}>{uploading?"⏳":uploadText?"✅":"📄"}</div>
+            <div style={{color:uploadText?"#34d399":C.muted,fontSize:14}}>{uploading?"Leyendo…":uploadText?"Archivo cargado, pulsa procesar":"Toca para seleccionar el archivo"}</div>
+          </div>
+
+          <button onClick={processUpload} disabled={!uploadText||aiLoading} style={{width:"100%",padding:16,background:(!uploadText||aiLoading)?C.border:C.accent,border:"none",borderRadius:12,color:"white",cursor:(!uploadText||aiLoading)?"not-allowed":"pointer",fontSize:16,fontFamily:"Georgia,serif",marginBottom:20}}>
+            {aiLoading?"Procesando con IA… ⏳":"Procesar plan + actualizar menú 🤖"}
+          </button>
+
+          <div style={{background:C.surface,borderRadius:12,padding:16}}>
+            <div style={{fontSize:11,color:C.accent,textTransform:"uppercase",letterSpacing:2,marginBottom:10}}>Historial de planes</div>
+            {data.weeks.map(w=>(
+              <div key={w.id} style={{display:"flex",justifyContent:"space-between",fontSize:13,color:C.muted,marginBottom:6}}>
+                <span>{w.period}</span>
+                <span style={{color:C.dim}}>{w.uploadedAt}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* BOTTOM NAV */}
+      <div style={{position:"fixed",bottom:0,left:"50%",transform:"translateX(-50%)",width:"100%",maxWidth:480,background:"#0d0f1a",borderTop:`1px solid ${C.border}`,display:"flex",zIndex:100}}>
+        {TABS.map(t=>(
+          <button key={t.id} onClick={()=>setTab(t.id)} style={{flex:1,padding:"12px 4px",border:"none",background:"none",cursor:"pointer",display:"flex",flexDirection:"column",alignItems:"center",gap:3}}>
+            <span style={{fontSize:20}}>{t.icon}</span>
+            <span style={{fontSize:10,color:tab===t.id?C.accent:C.dim,fontFamily:"Georgia,serif",letterSpacing:0.5}}>{t.label}</span>
+            {tab===t.id&&<div style={{width:20,height:2,background:C.accent,borderRadius:1}}/>}
+          </button>
+        ))}
+      </div>
+
+      <style>{`* { -webkit-tap-highlight-color: transparent; } input,select,button { outline: none; }`}</style>
+    </div>
+  );
+}
